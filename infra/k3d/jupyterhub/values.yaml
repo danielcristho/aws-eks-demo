@@ -1,0 +1,157 @@
+hub:
+  config:
+    JupyterHub:
+      authenticator_class: dummy
+      shutdown_on_logout: true
+      bind_url: http://0.0.0.0:8081
+      template_paths: ["/etc/jupyterhub/custom-templates"]
+
+    KubeSpawner:
+      k8s_api_request_timeout: 60
+      start_timeout: 300
+      http_timeout: 300
+
+    Authenticator:
+      admin_users:
+        - admin
+
+  db:
+    url: sqlite:////data/jupyterhub.sqlite
+
+  extraEnv:
+    # testing only - do not do this for production
+    CONFIGPROXY_AUTH_TOKEN: "c413fe27d65c5916b7cf4028bf49a19b3056d59f2c2d1e79349244a6f758babe"
+    JUPYTERHUB_PROXY_API_URL: http://proxy-api:8001
+    JUPYTERHUB_LOG_LEVEL: DEBUG
+
+  extraVolumes:
+    - name: jupyterhub-db
+      persistentVolumeClaim:
+        claimName: jupyterhub-pvc
+    - name: jupyterhub-config
+      configMap:
+        name: spawner-form
+
+  extraVolumeMounts:
+    - name: jupyterhub-db
+      mountPath: /data
+    - name: jupyterhub-config
+      mountPath: /etc/jupyterhub/custom-templates
+  extraConfig:
+    00-api: |
+      import json
+      import requests
+      from tornado.web import RequestHandler
+
+      class AvailableNodesHandler(RequestHandler):
+          def get(self):
+              try:
+                  resp = requests.get("http://10.21.73.122:5002/all-nodes", timeout=3)
+                  data = resp.json()
+                  if isinstance(data, dict) and "data" in data:
+                      data = data["data"]
+                  available = [n for n in data if not n.get("is_in_use_by_jupyterhub")]
+                  self.write(json.dumps(available))
+              except Exception as e:
+                  self.set_status(500)
+                  self.write(json.dumps({"error": str(e)}))
+      c.JupyterHub.extra_handlers = [
+          (r"/api/available-nodes", AvailableNodesHandler)
+      ]
+
+    01-options-from-form: |
+      def options_from_form(spawner, formdata):
+          node = formdata.get("node", [""])[0]
+          new_image = formdata.get("image", ["danielcristh0/jupyterlab:cpu"])[0]
+
+          spawner.node_selector = {"kubernetes.io/hostname": node}
+          if "gpu" in new_image or "cu" in new_image or "tf" in new_image:
+              spawner.extra_resource_limits = {"nvidia.com/gpu": "1"}
+          else:
+              spawner.extra_resource_limits = {}
+
+          old_image = getattr(spawner, "image", None)
+
+          # Force restart if image changes
+          if old_image and old_image != new_image:
+              spawner.image = new_image
+              spawner.user_options["image_changed"] = True
+          else:
+              spawner.image = new_image
+              spawner.user_options["image_changed"] = False
+
+          return {}, []
+      c.Spawner.options_from_form = options_from_form
+
+    02-spawn-form: |
+      c.Spawner.form_template = "form.html"
+
+    03-load-template: |
+      from jinja2 import Template
+
+      def options_form(spawner):
+          with open("/etc/jupyterhub/custom-templates/form.html") as f:
+              return Template(f.read()).render()
+
+      c.Spawner.options_form = options_form
+
+    04-force-restart-on-image-change: |
+      def pre_spawn_hook(spawner):
+          if spawner.user_options.get("image_changed", False):
+              spawner.log.info(f"[AUTO-RESTART] Image changed to {spawner.image}, restarting server...")
+              raise Exception("Restarting server with new image.")
+
+      c.Spawner.pre_spawn_hook = pre_spawn_hook
+
+proxy:
+  # testing only - do not do this for production
+  secretToken: "c413fe27d65c5916b7cf4028bf49a19b3056d59f2c2d1e79349244a6f758babe"
+  https:
+    enabled: false
+  service:
+    type: ClusterIP
+  chp:
+    extraCommandLineFlags:
+      - --port=8000
+      - --api-port=8001
+    extraEnv:
+      CONFIGPROXY_API_PORT: "8001"
+    nodeSelector:
+      kubernetes.io/hostname: rpl
+    resources:
+      requests:
+        memory: "256M"
+        cpu: "0.2"
+      limits:
+        memory: "512M"
+        cpu: "0.5"
+
+singleuser:
+  image:
+    name: danielcristh0/jupyterlab
+    tag: "1.1"
+    pullPolicy: IfNotPresent
+  defaultUrl: "/lab"
+  storage:
+    capacity: 1G
+    dynamic:
+      pvcNameTemplate: claim-{username}
+      storageAccessModes: ["ReadWriteOnce"]
+  memory:
+    guarantee: 512M
+    limit: 2G
+  cpu:
+    guarantee: 0.5
+    limit: 2
+
+cull:
+  enabled: true
+  timeout: 1800
+  every: 60
+  maxAge: 0
+  users: false
+  removeNamedServers: false
+
+prePuller:
+  hook:
+    enabled: false

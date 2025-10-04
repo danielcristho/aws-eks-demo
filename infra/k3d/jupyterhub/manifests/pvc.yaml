@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyterhub-pvc
+  namespace: jhub
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/instance: jhub
+    app.kubernetes.io/name: jupyterhub
+  annotations:
+    meta.helm.sh/release-name: jhub
+    meta.helm.sh/release-namespace: jhub
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: local-path
