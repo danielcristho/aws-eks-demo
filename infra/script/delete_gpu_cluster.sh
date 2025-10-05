@@ -1,0 +1,1 @@
+eksctl delete cluster --name=ml-ray-jhub --region=ap-southeast-1

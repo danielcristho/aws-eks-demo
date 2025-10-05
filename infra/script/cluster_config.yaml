@@ -1,0 +1,36 @@
+# cluster-config.yaml
+---
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ml-ray-jhub
+  region: ap-southeast-1
+  version: "1.30"
+
+# iam:
+#   withOIDC: true
+
+managedNodeGroups:
+  - name: cpu-ng
+    instanceType: t3.medium
+    minSize: 1
+    maxSize: 2
+    amiFamily: AmazonLinux2
+    labels: { role: cpu-general }
+
+  - name: gpu-ng
+    instanceType: g4dn.xlarge
+    minSize: 1 
+    maxSize: 2
+    amiFamily: Bottlerocket
+    taints:
+      - key: nvidia.com/gpu
+        value: present
+        effect: NoSchedule
+    labels: { role: gpu-worker }
+
+addons:
+- name: vpc-cni
+- name: coredns
+- name: kube-proxy

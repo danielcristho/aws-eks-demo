@@ -1,0 +1,1 @@
+eksctl delete cluster --name=acg-demo-cluster --region=ap-southeast-1
