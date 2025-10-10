@@ -35,7 +35,7 @@ def generate_unique_bucket_name(base_name):
     return f"{base_name}-{timestamp}-{unique_suffix}".lower()
 
 if __name__ == "__main__":
-    base_name = 'aws-artifacts'
+    base_name = 'demo-artifacts'
     my_region = 'us-west-1' 
     my_unique_bucket_name = generate_unique_bucket_name(base_name)
     create_s3_bucket(my_unique_bucket_name, my_region)
