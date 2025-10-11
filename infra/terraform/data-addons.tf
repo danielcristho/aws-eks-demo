@@ -7,6 +7,19 @@ resource "helm_release" "kuberay_operator" {
   namespace  = "kuberay-system"
   create_namespace = true
 
+  values = [
+    <<-EOT
+    operator:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+        requests:
+          cpu: 0.5
+          memory: 512Mi
+    EOT
+  ]
+  
   depends_on = [module.eks] 
 }
 

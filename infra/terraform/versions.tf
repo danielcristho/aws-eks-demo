@@ -26,7 +26,7 @@ terraform {
   }
   
 backend "s3" {
-    bucket = "demo-artifacts-251010-11356426" 
+    bucket = "demo-artifacts-251011-9ba0567e" 
     key    = "mlops-ray-eks/terraform.tfstate"
     region = "us-west-1" 
   }

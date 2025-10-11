@@ -1,1 +1,1 @@
-# aws-community-day
+# AWS Community Demo

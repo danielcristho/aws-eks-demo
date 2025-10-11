@@ -12,7 +12,7 @@ locals {
 
   tags = merge(var.tags, {
     Sample     = var.name
-    GithubRepo = "github.com/aws-samples/gen-ai-on-eks"
+    GithubRepo = "github.com/danielcristho/aws-community-day"
   })
 }
 
@@ -88,7 +88,7 @@ module "eks" {
     gpu1 = {
       name             = "gpu-node-grp-base"
       ami_type         = "AL2_x86_64_GPU"
-      min_size         = 0
+      min_size         = 1
       max_size         = 1
       desired_size     = 0 
       instance_types   = ["g4dn.xlarge"]
