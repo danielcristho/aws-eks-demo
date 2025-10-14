@@ -16,8 +16,8 @@ proxy:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
-      service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+      # service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
 
 singleuser:
@@ -48,11 +48,6 @@ singleuser:
   extraEnv:
     GRANT_SUDO: "yes"
     NOTEBOOK_ARGS: "--allow-root"
-    HUGGING_FACE_HUB_TOKEN:
-      valueFrom:
-        secretKeyRef:
-          name: hf-token
-          key: token
   storage:
     dynamic:
       storageClass: gp3

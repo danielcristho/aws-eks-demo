@@ -7,29 +7,29 @@ head:
   enableInTreeAutoscaling: "False"
   resources:
     limits:
-      cpu: "4" 
-      memory: "8Gi"
+      cpu: "1.5" 
+      memory: "6Gi"
       ephemeral-storage: "100Gi"
     requests:
-      cpu: "2"
+      cpu: "1"
       memory: "4Gi"
       ephemeral-storage: "50Gi"
   command: ["ray start --head --dashboard-host='0.0.0.0' --port=6379 --object-manager-port=12345 --node-manager-port=12346"]
   serviceAccount: 
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role" 
 
 worker:
   resources:
     limits:
       nvidia.com/gpu: 1
       cpu: "4" 
-      memory: "8Gi"
+      memory: "15Gi"
       ephemeral-storage: "200Gi"
     requests:
       nvidia.com/gpu: 1
       cpu: "4"
-      memory: "8Gi"
+      memory: "15Gi"
       ephemeral-storage: "200Gi"
   
   tolerations:
@@ -37,7 +37,6 @@ worker:
       operator: "Exists"
       effect: "NoSchedule"
 
-  
   replicas: "0"
   minReplicas: "0"
   maxReplicas: "10"

@@ -1,4 +1,4 @@
-# KubeRay Operator
+# Install KubeRay Operator
 resource "helm_release" "kuberay_operator" {
   name       = "kuberay-operator"
   repository = "https://ray-project.github.io/kuberay-helm/"
@@ -23,35 +23,38 @@ resource "helm_release" "kuberay_operator" {
   depends_on = [module.eks] 
 }
 
-# NVIDIA GPU Operator
+# Install NVIDIA GPU Operator
 resource "helm_release" "nvidia_device_plugin" {
-  name       = "nvidia-device-plugin"
-  repository = "https://nvidia.github.io/k8s-device-plugin"
-  chart      = "nvidia-device-plugin"
-  version    = "0.14.5"
-  namespace  = "gpu-operator"
+  name             = "nvidia-device-plugin"
+  repository       = "https://nvidia.github.io/k8s-device-plugin"
+  chart            = "nvidia-device-plugin"
+  version          = "0.14.5"
+  namespace        = "gpu-operator"
   create_namespace = true
-  set = [
-    {
-      name  = "nodeSelector.nvidia\\.com/gpu"
-      value = "true"
-    },
-    {
-      name  = "tolerations[0].key"
-      value = "nvidia.com/gpu"
-    },
-    {
-      name  = "tolerations[0].operator"
-      value = "Exists"
-    },
-    {
-      name  = "tolerations[0].effect"
-      value = "NoSchedule"
-    }
-  ]
-  
+
+  set {
+    name  = "nodeSelector.nvidia\\.com/gpu"
+    value = "true"
+  }
+
+  set {
+    name  = "tolerations[0].key"
+    value = "nvidia.com/gpu"
+  }
+
+  set {
+    name  = "tolerations[0].operator"
+    value = "Exists"
+  }
+
+  set {
+    name  = "tolerations[0].effect"
+    value = "NoSchedule"
+  }
+
   depends_on = [module.eks]
 }
+
 
 # JupyterHub Release
 resource "helm_release" "jupyterhub" {
