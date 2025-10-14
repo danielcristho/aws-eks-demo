@@ -32,29 +32,18 @@ resource "helm_release" "nvidia_device_plugin" {
   namespace        = "gpu-operator"
   create_namespace = true
 
-  set {
-    name  = "nodeSelector.nvidia\\.com/gpu"
-    value = "true"
-  }
-
-  set {
-    name  = "tolerations[0].key"
-    value = "nvidia.com/gpu"
-  }
-
-  set {
-    name  = "tolerations[0].operator"
-    value = "Exists"
-  }
-
-  set {
-    name  = "tolerations[0].effect"
-    value = "NoSchedule"
-  }
+  values = [<<-EOT
+    nodeSelector:
+      nvidia.com/gpu: "true"
+    tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+  EOT
+  ]
 
   depends_on = [module.eks]
 }
-
 
 # JupyterHub Release
 resource "helm_release" "jupyterhub" {
