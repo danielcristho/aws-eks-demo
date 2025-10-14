@@ -4,7 +4,7 @@ resource "helm_release" "kuberay_operator" {
   repository = "https://ray-project.github.io/kuberay-helm/"
   chart      = "kuberay-operator"
   version    = "1.1.0"
-  namespace  = "kuberay-system"
+  namespace  = "ray"
   create_namespace = true
 
   values = [
@@ -51,8 +51,8 @@ resource "helm_release" "jupyterhub" {
   repository       = "https://jupyterhub.github.io/helm-chart/"
   chart            = "jupyterhub"
   version          = "4.1.0"
-  namespace        = kubernetes_namespace_v1.jupyterhub.metadata[0].name 
-  create_namespace = false
+  namespace        = "jhub"
+  create_namespace = true
 
   values = [templatefile("${path.module}/helm/jupyterhub/values.yaml",
     { 
