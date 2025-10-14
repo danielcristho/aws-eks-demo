@@ -321,11 +321,28 @@ resource "kubernetes_resource_quota_v1" "quota_tenant_b" {
   }
 }
 
+# provider "kubernetes" {
+#   host                   = module.eks.cluster_endpoint
+#   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+#   token                  = data.aws_eks_cluster_auth.cluster.token
+# }
+
+# provider "helm" {
+#   kubernetes {
+#     host                   = module.eks.cluster_endpoint
+#     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+#     token                  = data.aws_eks_cluster_auth.cluster.token
+#   }
+# }
+
+# data "aws_eks_cluster_auth" "cluster" {
+#   name = module.eks.cluster_name
+# }
+
 # resource "aws_eks_access_entry" "console_admin" {
 #   cluster_name  = module.eks.cluster_id
 #   principal_arn = "arn:aws:iam::047719622882:user/salupa"
-  
-#   kubernetes_groups = ["system:masters"] 
+#   kubernetes_groups = ["system:masters"]
 
 #   access_policy_association {
 #     policy_arn = "arn:aws:eks::aws:cluster-access-policy/AccessPolicyAdmin"
@@ -334,6 +351,23 @@ resource "kubernetes_resource_quota_v1" "quota_tenant_b" {
 #     }
 #   }
 # }
+
+resource "aws_eks_access_entry" "console_admin" {
+  cluster_name  = module.eks.cluster_name
+  principal_arn = "arn:aws:iam::047719622882:user/salupa"
+}
+
+resource "aws_eks_access_policy_association" "console_admin_policy" {
+  cluster_name = module.eks.cluster_name
+  principal_arn = aws_eks_access_entry.console_admin.principal_arn
+  policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+
 
 # resource "aws_auth" "karpenter_node_role" {
 #   cluster_name = module.eks.cluster_id
