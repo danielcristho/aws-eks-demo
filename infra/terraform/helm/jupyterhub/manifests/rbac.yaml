@@ -1,0 +1,42 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: jupyterhub-spawn-reflector-global
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/exec", "pods/log", "events", "secrets", "services", "configmaps", "persistentvolumeclaims"]
+  verbs: ["get", "list", "watch", "create", "delete", "patch", "update"]
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jupyterhub-spawn-binding-tenant-a
+  namespace: tenant-a-mlops
+subjects:
+- kind: ServiceAccount
+  name: hub 
+  namespace: jupyterhub
+roleRef:
+  kind: ClusterRole
+  name: jupyterhub-spawn-reflector-global
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jupyterhub-spawn-binding-tenant-b
+  namespace: tenant-b-mlops
+subjects:
+- kind: ServiceAccount
+  name: hub 
+  namespace: jupyterhub 
+roleRef:
+  kind: ClusterRole
+  name: jupyterhub-spawn-reflector-global
+  apiGroup: rbac.authorization.k8s.io

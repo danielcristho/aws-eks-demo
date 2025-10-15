@@ -16,22 +16,21 @@ proxy:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+      service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
-      # service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
-
 singleuser:
   startTimeout: 1200
   profileList:
     - display_name: Tenant A - Training (Ray Client)
-      description: "Namespace 'tenant-a-mlops' | High CPU, Quota 4 GPU"
+      description: "Namespace 'tenant-a-mlops'"
       kubespawner_override:
         image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
         namespace: tenant-a-mlops 
-        cpu_guarantee: 4
-        mem_guarantee: 16G
-        cpu_limit: 8
-        mem_limit: 32G
+        cpu_guarantee: 1     
+        mem_guarantee: 4G   
+        cpu_limit: 2      
+        mem_limit: 7G    
       cmd: "start-singleuser.sh"
     
     - display_name: Tenant B - Testing (Serving CPU)

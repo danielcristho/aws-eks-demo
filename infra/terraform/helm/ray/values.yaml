@@ -1,29 +1,51 @@
 image:
-  repository: rayproject/ray-ml
-  tag: 2.11.0.a464b6-py311-gpu
+  repository: rayproject/ray
+  tag: 2.40.0-py312-gpu
   pullPolicy: IfNotPresent
 
 head:
-  enableInTreeAutoscaling: "False"
+  enableInTreeAutoscaling: "True"
+  service:
+    type: LoadBalancer
+    ports:
+      - name: dashboard
+        port: 8265
+        targetPort: 8265
+  command:
+    - ray
+    - start
+    - --head
+    - --dashboard-host=0.0.0.0
+    - --port=6379
+    - --object-manager-port=12345
+    - --node-manager-port=12346
   resources:
     limits:
-      cpu: "1.5" 
+      cpu: "1.5"
       memory: "6Gi"
       ephemeral-storage: "100Gi"
     requests:
       cpu: "1"
       memory: "4Gi"
       ephemeral-storage: "50Gi"
-  command: ["ray start --head --dashboard-host='0.0.0.0' --port=6379 --object-manager-port=12345 --node-manager-port=12346"]
-  serviceAccount: 
+  serviceAccount:
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role" 
+      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role"
 
 worker:
+  replicas: "1"
+  minReplicas: "0"
+  maxReplicas: "10"
+  nodeSelector:
+    node-type: gpu
+  tolerations:
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoSchedule"
   resources:
     limits:
       nvidia.com/gpu: 1
-      cpu: "4" 
+      cpu: "4"
       memory: "15Gi"
       ephemeral-storage: "200Gi"
     requests:
@@ -31,12 +53,3 @@ worker:
       cpu: "4"
       memory: "15Gi"
       ephemeral-storage: "200Gi"
-  
-  tolerations:
-    - key: "nvidia.com/gpu"
-      operator: "Exists"
-      effect: "NoSchedule"
-
-  replicas: "0"
-  minReplicas: "0"
-  maxReplicas: "10"
