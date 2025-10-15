@@ -142,29 +142,6 @@ module "eks_blueprints_addons" {
   }
 
   enable_aws_load_balancer_controller = false
-  # enable_argo_events            = false
-  # enable_argo_rollouts          = false
-  # enable_argo_workflows         = false
-  # enable_argocd                 = false
-  # enable_aws_cloudwatch_metrics = false
-  # enable_aws_efs_csi_driver     = false
-  # enable_aws_for_fluentbit      = false
-  # enable_aws_fsx_csi_driver     = false
-  # enable_aws_gateway_api_controller = false
-  # enable_aws_node_termination_handler = false
-  # enable_aws_privateca_issuer   = false
-  # enable_cert_manager           = false
-  # enable_cluster_autoscaler     = false
-  # enable_cluster_proportional_autoscaler = false
-  # enable_external_dns           = false
-  # enable_external_secrets       = false
-  # enable_gatekeeper             = false
-  # enable_kube_prometheus_stack  = false
-  # enable_metrics_server         = false
-  # enable_secrets_store_csi_driver = false
-  # enable_secrets_store_csi_driver_provider_aws = false
-  # enable_velero                 = false
-  # enable_vpa                    = false
 }
 
 # S3 Policy for Karpenter Nodes. Allows Ray Workers to read/write from S3
@@ -321,37 +298,6 @@ resource "kubernetes_resource_quota_v1" "quota_tenant_b" {
   }
 }
 
-# provider "kubernetes" {
-#   host                   = module.eks.cluster_endpoint
-#   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-#   token                  = data.aws_eks_cluster_auth.cluster.token
-# }
-
-# provider "helm" {
-#   kubernetes {
-#     host                   = module.eks.cluster_endpoint
-#     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-#     token                  = data.aws_eks_cluster_auth.cluster.token
-#   }
-# }
-
-# data "aws_eks_cluster_auth" "cluster" {
-#   name = module.eks.cluster_name
-# }
-
-# resource "aws_eks_access_entry" "console_admin" {
-#   cluster_name  = module.eks.cluster_id
-#   principal_arn = "arn:aws:iam::047719622882:user/salupa"
-#   kubernetes_groups = ["system:masters"]
-
-#   access_policy_association {
-#     policy_arn = "arn:aws:eks::aws:cluster-access-policy/AccessPolicyAdmin"
-#     access_scope {
-#       type = "cluster"
-#     }
-#   }
-# }
-
 resource "aws_eks_access_entry" "console_admin" {
   cluster_name  = module.eks.cluster_name
   principal_arn = "arn:aws:iam::047719622882:user/salupa"
@@ -366,14 +312,3 @@ resource "aws_eks_access_policy_association" "console_admin_policy" {
     type = "cluster"
   }
 }
-
-
-
-# resource "aws_auth" "karpenter_node_role" {
-#   cluster_name = module.eks.cluster_id
-#   map_roles {
-#     rolearn  = module.eks_blueprints_addons.karpenter.node_iam_role_arn
-#     username = "system:node:{{EC2PrivateDNSName}}"
-#     groups   = ["system:bootstrappers", "system:nodes"]
-#   }
-# }

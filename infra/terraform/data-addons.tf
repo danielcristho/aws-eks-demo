@@ -3,8 +3,8 @@ resource "helm_release" "kuberay_operator" {
   name       = "kuberay-operator"
   repository = "https://ray-project.github.io/kuberay-helm/"
   chart      = "kuberay-operator"
-  version    = "1.1.0"
-  namespace  = "ray"
+  version    = "1.4.2"
+  namespace  = "kuberay"
   create_namespace = true
 
   values = [
@@ -62,5 +62,26 @@ resource "helm_release" "jupyterhub" {
   depends_on = [
     helm_release.nvidia_device_plugin, 
     kubernetes_namespace_v1.jupyterhub
+  ]
+}
+
+# Ray Release
+resource "helm_release" "ray_cluster" {
+  name             = "ray-cluster"
+  repository       = "https://ray-project.github.io/kuberay-helm/"
+  chart            = "ray-cluster"
+  version          = "1.4.2"
+  namespace        = "ray"
+  create_namespace = true
+
+  values = [
+    templatefile("${path.module}/helm/ray/values.yaml", {
+      some_value = "custom"
+    })
+  ]
+
+  depends_on = [
+    helm_release.kuberay_operator,
+    helm_release.nvidia_device_plugin
   ]
 }

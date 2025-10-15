@@ -7,13 +7,13 @@ variable "aws_region" {
 variable "cluster_name_prefix" {
   description = "A unique prefix for all created resources"
   type        = string
-  default     = "mt-mlops-eks"
+  default     = "eks-demo"
 }
 
 variable "cluster_version" {
   description = "The Kubernetes version for the EKS cluster."
   type        = string
-  default     = "1.28"
+  default     = "1.30"
 }
 
 variable "vpc_cidr" {
