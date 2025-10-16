@@ -7,7 +7,7 @@ variable "aws_region" {
 variable "cluster_name_prefix" {
   description = "A unique prefix for all created resources"
   type        = string
-  default     = "eks-demo"
+  default     = "demo"
 }
 
 variable "cluster_version" {
