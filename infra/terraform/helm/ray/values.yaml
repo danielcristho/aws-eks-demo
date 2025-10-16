@@ -30,7 +30,7 @@ head:
       ephemeral-storage: "50Gi"
   serviceAccount:
     annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role"
+      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role" # Using your ARN number
 
 worker:
   replicas: "1"

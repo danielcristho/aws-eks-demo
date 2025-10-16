@@ -1,49 +1,48 @@
 hub:
+  shutdownOnLogout: true
+
+  db:
+    url: "sqlite:////srv/jupyterhub/jupyterhub.sqlite"
+
   config:
     Authenticator:
       admin_users:
-        - admin1
-      allowed_users:
-        - tenant-a-user
-        - tenant-b-user
-    DummyAuthenticator:
-      password: never-do-this
+        - admin
     JupyterHub:
-      authenticator_class: dummy
+      authenticator_class: nativeauthenticator.NativeAuthenticator
+    NativeAuthenticator:
+      open_signup: true
+      password_length_min: 6
+      ask_email_on_signup: false
+      allow_2fa: false
 
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 1Gi 
+  
 proxy:
   service:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
-      service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
       service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
+
 singleuser:
   startTimeout: 1200
-  profileList:
-    - display_name: Tenant A - Training (Ray Client)
-      description: "Namespace 'tenant-a-mlops'"
-      kubespawner_override:
-        image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
-        namespace: tenant-a-mlops 
-        cpu_guarantee: 1     
-        mem_guarantee: 4G   
-        cpu_limit: 2      
-        mem_limit: 7G    
-      cmd: "start-singleuser.sh"
-    
-    - display_name: Tenant B - Testing (Serving CPU)
-      description: "Namespace 'tenant-b-mlops' | Standard CPU, Quota 1 GPU"
-      kubespawner_override:
-        image: jupyter/scipy-notebook:python-3.10.11
-        namespace: tenant-b-mlops
-        cpu_guarantee: 1
-        mem_guarantee: 4G
-        cpu_limit: 2
-        mem_limit: 8G
-      cmd: "start-singleuser.sh"
-
+  image:
+    name: quay.io/jupyter/pytorch-notebook
+    tag: cuda12-python-3.11.8
+  cmd:
+    - start-singleuser.sh
+  defaultUrl: "/lab"
+  cpu:
+    guarantee: 1
+    limit: 2
+  memory:
+    guarantee: 4G
+    limit: 8G
   extraEnv:
     GRANT_SUDO: "yes"
     NOTEBOOK_ARGS: "--allow-root"
@@ -65,7 +64,7 @@ prePuller:
     enabled: false
   continuous:
     enabled: false
-    
+
 scheduling:
   userScheduler:
     enabled: false
@@ -73,7 +72,6 @@ scheduling:
     enabled: true
   userPlaceholder:
     enabled: false
-    replicas: 1
   userPods:
     nodeAffinity:
       matchNodePurpose: prefer
