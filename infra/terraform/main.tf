@@ -5,7 +5,6 @@ locals {
   partition   = data.aws_partition.current.partition
 
   vpc_cidr = var.vpc_cidr
-  # Use 2 Availability Zones for cost efficiency and simple redundancy
   azs      = slice(data.aws_availability_zones.available.names, 0, 2)
   private_subnets    = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 3, k)]
   public_subnets     = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 5, k + 8)]
@@ -17,14 +16,10 @@ locals {
   })
 }
 
-# Data sources for cluster bootstrapping and IAM
 data "aws_region" "current" {}
 data "aws_caller_identity" "current" {}
 data "aws_availability_zones" "available" {}
 data "aws_partition" "current" {}
-data "aws_ecrpublic_authorization_token" "token" {
-  provider = aws.ecr
-}
 
 ################################################################################
 # VPC & EKS Control Plane
@@ -41,7 +36,6 @@ module "vpc" {
   enable_nat_gateway    = true
   single_nat_gateway    = true
   
-  # Tags required for AWS Load Balancers and Karpenter discovery
   public_subnet_tags = { "kubernetes.io/role/elb" = 1 }
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
@@ -60,8 +54,7 @@ module "eks" {
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = compact([for subnet_id, cidr_block in zipmap(module.vpc.private_subnets, module.vpc.private_subnets_cidr_blocks) : substr(cidr_block, 0, 4) == "100." ? subnet_id : null])
-
-  eks_managed_node_groups = {
+eks_managed_node_groups = {
     app_head = {
       name             = "app-head-group"
       ami_type         = "AL2_x86_64"
@@ -72,14 +65,17 @@ module "eks" {
       labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "app-head" }
       tags             = merge(local.tags, { Name = "app-head-grp" })
       subnet_ids       = compact([for subnet_id, cidr_block in zipmap(module.vpc.private_subnets, module.vpc.private_subnets_cidr_blocks) : substr(cidr_block, 0, 4) == "100." ? subnet_id : null])
+      
     }
     
     gpu1 = {
       name             = "gpu-node-grp-base"
       ami_type         = "AL2_x86_64_GPU"
-      min_size         = 0 # Allows autoscaling from zero
-      max_size         = 1 # Budget limit to one GPU instance
+      
+      min_size         = 0 
+      max_size         = 1
       desired_size     = 0 
+      
       instance_types   = ["g4dn.xlarge"]
       labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "gpu" }
       taints = {
@@ -98,10 +94,9 @@ module "eks" {
 }
 
 ################################################################################
-# Addons and MLOps Tools (Karpenter, Ingress, Storage)
+# Add Addons Tools (Karpenter, Ingress, Storage)
 ################################################################################
 
-# Installs Karpenter, ALB Controller, Nginx Ingress
 module "eks_blueprints_addons" {
   source  = "aws-ia/eks-blueprints-addons/aws"
   version = "~> 1.16.2"
@@ -121,15 +116,12 @@ module "eks_blueprints_addons" {
     vpc-cni  = { preserve = true }
   }
 
-
-
-  # Nginx Ingress Add-on for exposing JupyterHub and Ray Serve
+  enable_aws_load_balancer_controller = false # Cost-saving: disabled
   enable_ingress_nginx          = true
   ingress_nginx = {
     values = [templatefile("${path.module}/helm/nginx-ingress/values.yaml", {})]
   }
 
-  # Karpenter Autoscaler
   enable_karpenter              = true
   karpenter_enable_spot_termination = true # Enable SPOT for max cost savings
   karpenter_node = {
@@ -140,8 +132,16 @@ module "eks_blueprints_addons" {
   karpenter = {
     chart_version       = "0.35.4"
   }
-
-  enable_aws_load_balancer_controller = false
+  enable_argo_events            = false 
+  enable_argo_rollouts          = false
+  enable_argo_workflows         = false
+  enable_argocd                 = false
+  enable_aws_cloudwatch_metrics = false
+  enable_cluster_autoscaler     = false
+  enable_external_dns           = false
+  enable_metrics_server         = false
+  enable_secrets_store_csi_driver = false
+  enable_velero                 = false
 }
 
 # S3 Policy for Karpenter Nodes. Allows Ray Workers to read/write from S3
@@ -179,7 +179,7 @@ resource "aws_iam_role_policy_attachment" "karpenter_attach_policy_to_role" {
 }
 
 resource "aws_s3_bucket" "fm_ops_data" {
-  bucket_prefix = "ml-tenant-checkpoints"
+  bucket_prefix = "tf-checkpoints"
 
   tags = { Name = "datasets-checkpoints" }
 }
@@ -228,21 +228,22 @@ module "ebs_csi_driver_irsa" {
 }
 
 ################################################################################
-# 3. Multi-Tenancy & JupyterHub IAM
+# Multi-Tenancy & JupyterHub IAM
 ################################################################################
 
-# Base Namespace for JupyterHub
+# Base Namespace for JupyterHub Control Plane
 resource "kubernetes_namespace_v1" "jupyterhub" {
   metadata { name = "jupyterhub" }
 }
 
-# IAM Role for Service Account (IRSA) for JupyterHub Single-User Pods (S3 Access)
+# IAM Role for Service Account for JupyterHub Single-User Pods (S3 Access)
 module "jupyterhub_single_user_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
   version = "~> 5.30"
 
   role_name = "jupyterhub-single-user"
-  role_policy_arns = { policy = "arn:aws:iam::aws:policy/AdministratorAccess" } # Set to minimal permissions later
+  create_role = false # Uncomment if you want to create a new role
+  role_policy_arns = { policy = "arn:aws:iam::aws:policy/AdministratorAccess" }
 
   oidc_providers = {
     main = {
@@ -260,15 +261,14 @@ resource "kubernetes_service_account_v1" "jupyterhub_single_user_sa" {
   }
 }
 
-# Tenant A: High Resource Quota (Training)
-resource "kubernetes_namespace_v1" "tenant_a" {
-  metadata { name = "tenant-a-mlops" }
+resource "kubernetes_namespace_v1" "ml_workload" {
+  metadata { name = "ml-workload-ns" }
 }
 
-resource "kubernetes_resource_quota_v1" "quota_tenant_a" {
+resource "kubernetes_resource_quota_v1" "quota_ml_workload" {
   metadata {
-    name      = "ml-quota-large"
-    namespace = kubernetes_namespace_v1.tenant_a.metadata[0].name
+    name      = "ml-quota-default"
+    namespace = kubernetes_namespace_v1.ml_workload.metadata[0].name
   }
   spec {
     hard = {
@@ -279,28 +279,10 @@ resource "kubernetes_resource_quota_v1" "quota_tenant_a" {
   }
 }
 
-# Tenant B: Low Resource Quota (Serving/Testing)
-resource "kubernetes_namespace_v1" "tenant_b" {
-  metadata { name = "tenant-b-mlops" }
-}
-
-resource "kubernetes_resource_quota_v1" "quota_tenant_b" {
-  metadata {
-    name      = "ml-quota-small"
-    namespace = kubernetes_namespace_v1.tenant_b.metadata[0].name
-  }
-  spec {
-    hard = {
-      "nvidia.com/gpu" = "1"
-      "limits.cpu"     = "5"
-      "limits.memory"  = "20Gi"
-    }
-  }
-}
-
+# Access Entry for the Console User
 resource "aws_eks_access_entry" "console_admin" {
   cluster_name  = module.eks.cluster_name
-  principal_arn = "arn:aws:iam::047719622882:user/salupa"
+  principal_arn = "arn:aws:iam::047719622882:user/salupa" # Using your ARN number
 }
 
 resource "aws_eks_access_policy_association" "console_admin_policy" {
