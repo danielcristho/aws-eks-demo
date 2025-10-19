@@ -1,63 +1,92 @@
 hub:
-  shutdownOnLogout: true
-
-  db:
-    url: "sqlite:////srv/jupyterhub/jupyterhub.sqlite"
-
   config:
     Authenticator:
       admin_users:
-        - admin
+        - admin1
+      allowed_users:
+        - user1
+    # testing only - do not do this for production
+    DummyAuthenticator:
+      password: never-do-this
     JupyterHub:
-      authenticator_class: nativeauthenticator.NativeAuthenticator
-    NativeAuthenticator:
-      open_signup: true
-      password_length_min: 6
-      ask_email_on_signup: false
-      allow_2fa: false
+      authenticator_class: dummy
+      bind_url: http://0.0.0.0:8081
+      shutdown_on_logout: true
+    
+    KubeSpawner:
+      k8s_api_request_timeout: 60
+      start_timeout: 300
+      http_timeout: 300
 
-persistence:
-  enabled: true
-  storageClass: gp3
-  size: 1Gi 
-  
 proxy:
   service:
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+      service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
       service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
 
 singleuser:
   startTimeout: 1200
-  image:
-    name: quay.io/jupyter/pytorch-notebook
-    tag: cuda12-python-3.11.8
-  cmd:
-    - start-singleuser.sh
-  defaultUrl: "/lab"
-  cpu:
-    guarantee: 1
-    limit: 2
-  memory:
-    guarantee: 4G
-    limit: 8G
+  profileList:
+    - display_name: Standard CPU Client
+      description: "Namespace 'ml-workload-ns' | CPU Notebook"
+      default: true
+      kubespawner_override:
+        namespace: ml-workload-ns
+        image: jupyter/scipy-notebook:python-3.10.11
+        cpu_guarantee: 1
+        mem_guarantee: 4G
+        cpu_limit: 2
+        mem_limit: 8G
+      args: ["/usr/local/bin/start-notebook.sh", "--ip=0.0.0.0"]
+      cmd: null
+
+    - display_name: GPU Ray Client
+      description: "Namespace 'ml-workload-ns' | GPU-enabled Notebook"
+      kubespawner_override:
+        namespace: ml-workload-ns
+        image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
+        cpu_guarantee: 4
+        mem_guarantee: 15G
+        cpu_limit: 4
+        mem_limit: 15G
+        extra_resource_limits:
+          nvidia.com/gpu: "1"
+        tolerations:
+          - key: "nvidia.com/gpu"
+            operator: "Exists"
+            effect: "NoSchedule"
+      cmd: "start-singleuser.sh"
+
   extraEnv:
     GRANT_SUDO: "yes"
     NOTEBOOK_ARGS: "--allow-root"
+    CHOWN_HOME: "yes"
+    CHOWN_HOME_OPTS: "-R"
+    CHOWN_EXTRA: "/home/jovyan/notebooks"
+  
   storage:
     dynamic:
       storageClass: gp3
-    extraVolumes:
-      - name: notebook
-        configMap:
-          name: notebook
-    extraVolumeMounts:
-      - name: notebook
-        mountPath: /home/jovyan/notebooks
+    # extraVolumes:
+    #   - name: notebook
+    #     configMap:
+    #       name: notebook
+    # extraVolumeMounts:
+    #   - name: notebook
+    #     mountPath: /home/jovyan/notebooks
   allowPrivilegeEscalation: true
-  serviceAccountName: ${jupyter_single_user_sa_name}
+  serviceAccountName: jupyterhub-single-user-ml
+
+cull:
+  enabled: true
+  timeout: 1800
+  every: 60
+  maxAge: 0
+  users: false
+  removeNamedServers: false
 
 prePuller:
   hook:
@@ -72,6 +101,7 @@ scheduling:
     enabled: true
   userPlaceholder:
     enabled: false
+    replicas: 1
   userPods:
     nodeAffinity:
       matchNodePurpose: prefer
