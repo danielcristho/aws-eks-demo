@@ -1,28 +1,3 @@
-# Install KubeRay Operator
-resource "helm_release" "kuberay_operator" {
-  name       = "kuberay-operator"
-  repository = "https://ray-project.github.io/kuberay-helm/"
-  chart      = "kuberay-operator"
-  version    = "1.4.2"
-  namespace  = "kuberay"
-  create_namespace = true
-
-  values = [
-    <<-EOT
-    operator:
-      resources:
-        limits:
-          cpu: 1
-          memory: 1Gi
-        requests:
-          cpu: 0.5
-          memory: 512Mi
-    EOT
-  ]
-  
-  depends_on = [module.eks] 
-}
-
 # Install NVIDIA GPU Operator
 resource "helm_release" "nvidia_device_plugin" {
   name             = "nvidia-device-plugin"
@@ -50,7 +25,7 @@ resource "helm_release" "jupyterhub" {
   name             = "jupyterhub"
   repository       = "https://jupyterhub.github.io/helm-chart/"
   chart            = "jupyterhub"
-  version          = "4.1.0"
+  version          = "4.0.0"
   namespace        = "jhub"
   create_namespace = true
 
@@ -61,11 +36,37 @@ resource "helm_release" "jupyterhub" {
   )]
   depends_on = [
     helm_release.nvidia_device_plugin, 
-    kubernetes_namespace_v1.jupyterhub
+    kubernetes_namespace_v1.jupyterhub,
+    helm_release.nginx_ingress_controller
   ]
 }
 
-# Ray Release
+# Install KubeRay Operator
+resource "helm_release" "kuberay_operator" {
+  name       = "kuberay-operator"
+  repository = "https://ray-project.github.io/kuberay-helm/"
+  chart      = "kuberay-operator"
+  version    = "1.4.2"
+  namespace  = "kuberay"
+  create_namespace = true
+
+  values = [
+    <<-EOT
+    operator:
+      resources:
+        limits:
+          cpu: 1
+          memory: 1Gi
+        requests:
+          cpu: 0.5
+          memory: 512Mi
+    EOT
+  ]
+  
+  depends_on = [module.eks] 
+}
+
+# Raycluster Release
 resource "helm_release" "ray_cluster" {
   name             = "ray-cluster"
   repository       = "https://ray-project.github.io/kuberay-helm/"
@@ -83,5 +84,21 @@ resource "helm_release" "ray_cluster" {
   depends_on = [
     helm_release.kuberay_operator,
     helm_release.nvidia_device_plugin
+  ]
+}
+
+# Nginx ingress controller
+resource "helm_release" "nginx_ingress_controller" {
+  name             = "nginx-ingress"
+  repository       = "https://kubernetes.github.io/ingress-nginx"
+  chart            = "ingress-nginx"
+  version          = "4.9.1"
+  namespace        = "nginx-ingress"
+  create_namespace = true
+
+  values = [
+    templatefile("${path.module}/helm/nginx-ingress/values.yaml", {
+      some_value = "custom"
+    })
   ]
 }
