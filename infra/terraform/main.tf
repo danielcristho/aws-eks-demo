@@ -55,29 +55,30 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = compact([for subnet_id, cidr_block in zipmap(module.vpc.private_subnets, module.vpc.private_subnets_cidr_blocks) : substr(cidr_block, 0, 4) == "100." ? subnet_id : null])
 eks_managed_node_groups = {
-    app_head = {
-      name             = "app-head-group"
+
+    head = {
+      name             = "head-group"
       ami_type         = "AL2_x86_64"
       min_size         = 1
       max_size         = 2
       desired_size     = 1
       instance_types   = ["m5.large"]
-      labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "app-head" }
-      tags             = merge(local.tags, { Name = "app-head-grp" })
+      labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "head-cpu" }
+      tags             = merge(local.tags, { Name = "head-grp" })
       subnet_ids       = compact([for subnet_id, cidr_block in zipmap(module.vpc.private_subnets, module.vpc.private_subnets_cidr_blocks) : substr(cidr_block, 0, 4) == "100." ? subnet_id : null])
-      
     }
     
-    gpu1 = {
-      name             = "gpu-node-grp-base"
+    worker = {
+      name             = "gpu-workers-group"
       ami_type         = "AL2_x86_64_GPU"
       
-      min_size         = 0 
+      min_size         = 1 
       max_size         = 1
-      desired_size     = 0 
+      desired_size     = 1 
       
       instance_types   = ["g4dn.xlarge"]
-      labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "gpu" }
+      labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "worker-gpu" }
+      
       taints = {
         gpu = {
           key      = "nvidia.com/gpu"
@@ -92,7 +93,6 @@ eks_managed_node_groups = {
 
   tags = merge(local.tags, { "karpenter.sh/discovery" = local.name })
 }
-
 ################################################################################
 # Add Addons Tools (Karpenter, Ingress, Storage)
 ################################################################################
@@ -117,10 +117,10 @@ module "eks_blueprints_addons" {
   }
 
   enable_aws_load_balancer_controller = false # Cost-saving: disabled
-  enable_ingress_nginx          = true
-  ingress_nginx = {
-    values = [templatefile("${path.module}/helm/nginx-ingress/values.yaml", {})]
-  }
+  enable_ingress_nginx          = false
+  # ingress_nginx = {
+  #   values = [templatefile("${path.module}/helm/nginx-ingress/values.yaml", {})]
+  # }
 
   enable_karpenter              = true
   karpenter_enable_spot_termination = true # Enable SPOT for max cost savings
@@ -132,16 +132,16 @@ module "eks_blueprints_addons" {
   karpenter = {
     chart_version       = "0.35.4"
   }
-  enable_argo_events            = false 
-  enable_argo_rollouts          = false
-  enable_argo_workflows         = false
-  enable_argocd                 = false
-  enable_aws_cloudwatch_metrics = false
-  enable_cluster_autoscaler     = false
-  enable_external_dns           = false
-  enable_metrics_server         = false
+  enable_argo_events              = false 
+  enable_argo_rollouts            = false
+  enable_argo_workflows           = false
+  enable_argocd                   = false
+  enable_aws_cloudwatch_metrics   = false
+  enable_cluster_autoscaler       = false
+  enable_external_dns             = false
+  enable_metrics_server           = false
   enable_secrets_store_csi_driver = false
-  enable_velero                 = false
+  enable_velero                   = false
 }
 
 # S3 Policy for Karpenter Nodes. Allows Ray Workers to read/write from S3
@@ -233,7 +233,7 @@ module "ebs_csi_driver_irsa" {
 
 # Base Namespace for JupyterHub Control Plane
 resource "kubernetes_namespace_v1" "jupyterhub" {
-  metadata { name = "jupyterhub" }
+  metadata { name = "jhub" }
 }
 
 # IAM Role for Service Account for JupyterHub Single-User Pods (S3 Access)
@@ -242,7 +242,7 @@ module "jupyterhub_single_user_irsa" {
   version = "~> 5.30"
 
   role_name = "jupyterhub-single-user"
-  create_role = false # Uncomment if you want to create a new role
+  # create_role = false # Uncomment if you want to create a new role
   role_policy_arns = { policy = "arn:aws:iam::aws:policy/AdministratorAccess" }
 
   oidc_providers = {
@@ -258,26 +258,29 @@ resource "kubernetes_service_account_v1" "jupyterhub_single_user_sa" {
     name      = "jupyterhub-single-user"
     namespace = kubernetes_namespace_v1.jupyterhub.metadata[0].name
     annotations = { "eks.amazonaws.com/role-arn" : module.jupyterhub_single_user_irsa.iam_role_arn }
+    # lifecycle {
+    #   # ignore_changes = [all] 
+    # }
   }
 }
 
-resource "kubernetes_namespace_v1" "ml_workload" {
-  metadata { name = "ml-workload-ns" }
-}
+# resource "kubernetes_namespace_v1" "ml_workload" {
+#   metadata { name = "ml-workload-ns" }
+# }
 
-resource "kubernetes_resource_quota_v1" "quota_ml_workload" {
-  metadata {
-    name      = "ml-quota-default"
-    namespace = kubernetes_namespace_v1.ml_workload.metadata[0].name
-  }
-  spec {
-    hard = {
-      "nvidia.com/gpu" = "4"
-      "limits.cpu"     = "20"
-      "limits.memory"  = "100Gi"
-    }
-  }
-}
+# resource "kubernetes_resource_quota_v1" "quota_ml_workload" {
+#   metadata {
+#     name      = "ml-quota-default"
+#     namespace = kubernetes_namespace_v1.ml_workload.metadata[0].name
+#   }
+#   spec {
+#     hard = {
+#       "nvidia.com/gpu" = "4"
+#       "limits.cpu"     = "20"
+#       "limits.memory"  = "100Gi"
+#     }
+#   }
+# }
 
 # Access Entry for the Console User
 resource "aws_eks_access_entry" "console_admin" {
@@ -294,3 +297,34 @@ resource "aws_eks_access_policy_association" "console_admin_policy" {
     type = "cluster"
   }
 }
+
+resource "kubernetes_resource_quota_v1" "quota_jhub" {
+  metadata {
+    name      = "ml-quota-default"
+    namespace = kubernetes_namespace_v1.jupyterhub.metadata[0].name 
+  }
+  # spec {
+  #   hard = {
+  #     "nvidia.com/gpu" = "4"
+  #     "limits.cpu"     = "20"
+  #     "limits.memory"  = "100Gi"
+  #   }
+  # }
+}
+
+# resource "kubernetes_service_account_v1" "ml_workload_sa" {
+#   metadata {
+#     name      = "jupyterhub-single-user-ml"
+#     namespace = kubernetes_namespace_v1.ml_workload.metadata[0].name 
+#     annotations = { "eks.amazonaws.com/role-arn" : module.jupyterhub_single_user_irsa.iam_role_arn } 
+#   }
+# }
+
+# # Remove Cloudwatch log groups
+# resource "aws_cloudwatch_log_group" "eks_cluster" {
+#   name              = "/aws/eks/${local.name}/cluster"
+#   retention_in_days = 7  
+#   lifecycle {
+#     prevent_destroy = false
+#   }
+# }

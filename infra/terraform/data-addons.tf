@@ -21,8 +21,8 @@ resource "helm_release" "nvidia_device_plugin" {
 }
 
 # JupyterHub Release
-resource "helm_release" "jupyterhub" {
-  name             = "jupyterhub"
+resource "helm_release" "jupyterhub_cluster" {
+  name             = "jupyterhub-cluster"
   repository       = "https://jupyterhub.github.io/helm-chart/"
   chart            = "jupyterhub"
   version          = "4.0.0"
