@@ -1,52 +1,77 @@
 hub:
+  image:
+    name: jupyterhub/k8s-hub
+    tag: "4.0.0"
+  extraEnv:
+    - name: JUPYTERHUB_EXTRA_PACKAGES
+      value: "jupyterhub-nativeauthenticator"
+
   config:
-    Authenticator:
-      admin_users:
-        - admin1
-      allowed_users:
-        - user1
-    # testing only - do not do this for production
-    DummyAuthenticator:
-      password: never-do-this
     JupyterHub:
-      authenticator_class: dummy
+      authenticator_class: nativeauthenticator.NativeAuthenticator
       bind_url: http://0.0.0.0:8081
       shutdown_on_logout: true
-    
+      cookie_options:
+        sameSite: None
+        secure: false
+
+    NativeAuthenticator:
+      open_signup: true
+      password_min_length: 8
+      check_common_password: true
+      allowed_users:
+        - demo1
+        - demo2
+      admin_users:
+        - admin
+
     KubeSpawner:
-      k8s_api_request_timeout: 60
+      k8s_api_request_timeout: 300
       start_timeout: 300
       http_timeout: 300
+      image_pull_policy: IfNotPresent
 
 proxy:
   service:
+    type: LoadBalancer
     annotations:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
       service.beta.kubernetes.io/aws-load-balancer-scheme: internal
-      service.beta.kubernetes.io/aws-load-balancer-type: external
       service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
       service.beta.kubernetes.io/aws-load-balancer-ip-address-type: ipv4
+  https:
+    enabled: false
 
 singleuser:
   startTimeout: 1200
+
   profileList:
-    - display_name: Standard CPU Client
-      description: "Namespace 'ml-workload-ns' | CPU Notebook"
+    # ------------------------------------------------------------------
+    # CPU Profile
+    # ------------------------------------------------------------------
+    - display_name: Standard CPU Node
+      description: "Namespace 'jhub' | CPU Notebook"
       default: true
       kubespawner_override:
-        namespace: ml-workload-ns
+        namespace: jhub
         image: jupyter/scipy-notebook:python-3.10.11
         cpu_guarantee: 1
         mem_guarantee: 4G
         cpu_limit: 2
         mem_limit: 8G
-      args: ["/usr/local/bin/start-notebook.sh", "--ip=0.0.0.0"]
-      cmd: null
+        cmd: null
+        args:
+          - start-singleuser.sh
+          - "--ip=0.0.0.0"
+        default_url: /lab
 
-    - display_name: GPU Ray Client
-      description: "Namespace 'ml-workload-ns' | GPU-enabled Notebook"
+    # ------------------------------------------------------------------
+    # GPU Profile
+    # ------------------------------------------------------------------
+    - display_name: GPU Node
+      description: "Namespace 'jhub' | GPU-enabled Notebook"
       kubespawner_override:
-        namespace: ml-workload-ns
+        namespace: jhub
         image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
         cpu_guarantee: 4
         mem_guarantee: 15G
@@ -58,42 +83,56 @@ singleuser:
           - key: "nvidia.com/gpu"
             operator: "Exists"
             effect: "NoSchedule"
-      cmd: "start-singleuser.sh"
+        cmd: null
+        args:
+          - start-singleuser.sh
+          - "--ip=0.0.0.0"
+        default_url: /lab
 
   extraEnv:
     GRANT_SUDO: "yes"
     NOTEBOOK_ARGS: "--allow-root"
     CHOWN_HOME: "yes"
     CHOWN_HOME_OPTS: "-R"
-    CHOWN_EXTRA: "/home/jovyan/notebooks"
-  
+    CHOWN_EXTRA: "/home/jovyan"
+
+  extraAnnotations:
+    owner: "{username}"
+    platform: aws-eks
+    storage: ebs-gp3
+
   storage:
+    type: dynamic
     dynamic:
       storageClass: gp3
-    # extraVolumes:
-    #   - name: notebook
-    #     configMap:
-    #       name: notebook
-    # extraVolumeMounts:
-    #   - name: notebook
-    #     mountPath: /home/jovyan/notebooks
-  allowPrivilegeEscalation: true
-  serviceAccountName: jupyterhub-single-user-ml
+      storageAccessModes: ["ReadWriteOnce"]
+      storageCapacity: 10Gi
+    homeMountPath: /home/jovyan
+    extraLabels:
+      app: jupyterhub
+      purpose: user-storage
+      user: "{username}"
 
+  allowPrivilegeEscalation: true
+  serviceAccountName: jupyterhub-single-user
+
+# Idle server management
 cull:
   enabled: true
   timeout: 1800
   every: 60
   maxAge: 0
   users: false
-  removeNamedServers: false
+  removeNamedServers: false  # Automatically stops idle user servers to save resources
 
+# Image prepulling config
 prePuller:
   hook:
     enabled: false
   continuous:
     enabled: false
 
+# Scheduling and pod behavior
 scheduling:
   userScheduler:
     enabled: false
@@ -101,7 +140,6 @@ scheduling:
     enabled: true
   userPlaceholder:
     enabled: false
-    replicas: 1
   userPods:
     nodeAffinity:
       matchNodePurpose: prefer
