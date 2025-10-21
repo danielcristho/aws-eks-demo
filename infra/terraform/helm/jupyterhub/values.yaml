@@ -103,10 +103,10 @@ singleuser:
 
   storage:
     type: dynamic
+    capacity: 10Gi
     dynamic:
       storageClass: gp3
       storageAccessModes: ["ReadWriteOnce"]
-      storageCapacity: 10Gi
     homeMountPath: /home/jovyan
     extraLabels:
       app: jupyterhub
