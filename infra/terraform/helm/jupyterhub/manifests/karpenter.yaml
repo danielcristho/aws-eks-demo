@@ -1,0 +1,101 @@
+# ----------------------------------------------
+# GPU Node Pool
+# ----------------------------------------------
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: gpu-nodepool
+spec:
+  template:
+    metadata:
+      labels:
+        NodeGroupType: worker-gpu
+        cluster.discovery: mlops-demo
+    spec:
+      nodeClassRef:
+        name: gpu-nodeclass
+      taints:
+        - key: nvidia.com/gpu
+          effect: NoSchedule
+      requirements:
+        - key: "karpenter.k8s.aws/instance-family"
+          operator: In
+          values: ["g4dn"]
+        - key: "karpenter.k8s.aws/instance-size"
+          operator: In
+          values: ["xlarge"]
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64"]
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: ["spot", "on-demand"]
+  limits:
+    cpu: 1000
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s
+---
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: gpu-nodeclass
+spec:
+  amiFamily: AL2
+  role: karpenter-node-role-mlops-demo
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: mlops-demo
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: mlops-demo
+
+# ----------------------------------------------
+# CPU Node Pool
+# ----------------------------------------------
+---
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: cpu-nodepool
+spec:
+  template:
+    metadata:
+      labels:
+        NodeGroupType: head-cpu
+        cluster.discovery: mlops-demo
+    spec:
+      nodeClassRef:
+        name: cpu-nodeclass
+      requirements:
+        - key: "karpenter.k8s.aws/instance-family"
+          operator: In
+          values: ["m5"]
+        - key: "karpenter.k8s.aws/instance-size"
+          operator: In
+          values: ["large"]
+        - key: "kubernetes.io/arch"
+          operator: In
+          values: ["amd64"]
+        - key: "karpenter.sh/capacity-type"
+          operator: In
+          values: ["on-demand"]
+  limits:
+    cpu: 500
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s
+---
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: cpu-nodeclass
+spec:
+  amiFamily: AL2
+  role: karpenter-node-role-mlops-demo
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: mlops-demo
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: mlops-demo
