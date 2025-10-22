@@ -95,6 +95,8 @@ singleuser:
     CHOWN_HOME: "yes"
     CHOWN_HOME_OPTS: "-R"
     CHOWN_EXTRA: "/home/jovyan"
+    # NO_PROXY: "<hub_url>,<hub-ip>,localhost,127.0.0.1"
+    # no_proxy: "<hub_url>,<hub-ip>,localhost,127.0.0.1"
 
   extraAnnotations:
     owner: "{username}"
