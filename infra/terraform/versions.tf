@@ -24,7 +24,8 @@ terraform {
       version = ">= 3.4"
     }
   }
-  
+
+# Store ".tfstate"  
 backend "s3" {
     bucket = "demo-artifacts-251017-d65ac021" 
     key    = "terraform.tfstate"

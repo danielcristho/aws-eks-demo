@@ -1,55 +1,67 @@
 image:
   repository: rayproject/ray
-  tag: 2.40.0-py312-gpu
+  tag: "2.11.0-py311"
   pullPolicy: IfNotPresent
 
+
 head:
-  enableInTreeAutoscaling: "True"
-  service:
-    type: LoadBalancer
-    ports:
-      - name: dashboard
-        port: 8265
-        targetPort: 8265
-  command:
-    - ray
-    - start
-    - --head
-    - --dashboard-host=0.0.0.0
-    - --port=6379
-    - --object-manager-port=12345
-    - --node-manager-port=12346
+  nodeSelector:
+    NodeGroupType: head-cpu
+
+  tolerations: []  # head node doesn't need GPU taint
+
   resources:
-    limits:
-      cpu: "1.5"
-      memory: "6Gi"
-      ephemeral-storage: "100Gi"
     requests:
       cpu: "1"
       memory: "4Gi"
-      ephemeral-storage: "50Gi"
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::047719622882:role/ray-head-s3-access-role" # Using your ARN number
+      ephemeral-storage: "10Gi"
+    limits:
+      cpu: "2"
+      memory: "6Gi"
+      ephemeral-storage: "20Gi"
+
+  command: ["/bin/bash", "-c"]
+  args:
+    - |
+      echo "Starting Ray Head Node on CPU node..."
+      ray start --head --port=6379 --dashboard-host=0.0.0.0 --block
+      tail -f /dev/null
 
 worker:
-  replicas: "1"
-  minReplicas: "0"
-  maxReplicas: "10"
+  image:
+    repository: rayproject/ray-ml
+    tag: "2.11.0-py311-gpu"
+
   nodeSelector:
-    node-type: gpu
+    NodeGroupType: worker-gpu
+
   tolerations:
     - key: "nvidia.com/gpu"
       operator: "Exists"
       effect: "NoSchedule"
+    - key: "nvidia.com/gpu"
+      operator: "Exists"
+      effect: "NoExecute"
+
   resources:
-    limits:
-      nvidia.com/gpu: 1
-      cpu: "4"
-      memory: "15Gi"
-      ephemeral-storage: "200Gi"
     requests:
+      cpu: "2"
+      memory: "4Gi"
+      ephemeral-storage: "10Gi"
       nvidia.com/gpu: 1
+    limits:
       cpu: "4"
-      memory: "15Gi"
-      ephemeral-storage: "200Gi"
+      memory: "12Gi"
+      ephemeral-storage: "20Gi"
+      nvidia.com/gpu: 1
+
+  replicas: 1
+  minReplicas: 0
+  maxReplicas: 2
+
+  command: ["/bin/bash", "-c"]
+  args:
+    - |
+      echo "Starting Ray Worker Node with GPU support..."
+      ray start --address=ray-cluster-kuberay-head-svc:6379 --num-gpus=1 --block
+      tail -f /dev/null

@@ -60,8 +60,8 @@ eks_managed_node_groups = {
       name             = "head-group"
       ami_type         = "AL2_x86_64"
       min_size         = 1
-      max_size         = 2
-      desired_size     = 1
+      max_size         = 3
+      desired_size     = 2
       instance_types   = ["m5.large"]
       labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "head-cpu" }
       tags             = merge(local.tags, { Name = "head-grp" })
@@ -73,10 +73,10 @@ eks_managed_node_groups = {
       ami_type         = "AL2_x86_64_GPU"
       
       min_size         = 1 
-      max_size         = 1
+      max_size         = 2
       desired_size     = 1 
       
-      instance_types   = ["g4dn.xlarge"]
+      instance_types   = ["g4dn.2xlarge"]
       labels           = { WorkerType = "ON_DEMAND", NodeGroupType = "worker-gpu" }
       
       taints = {
@@ -328,3 +328,40 @@ resource "kubernetes_resource_quota_v1" "quota_jhub" {
 #     prevent_destroy = false
 #   }
 # }
+
+################################################################################
+# IAM Policy: Allow Karpenter Controller to Pass Node Roles & Create Instance Profiles
+################################################################################
+data "aws_iam_role" "karpenter_controller_role" {
+  name = "karpenter-mlops-demo-2025102107351143920000001b"
+}
+
+resource "aws_iam_policy" "karpenter_controller_passrole_policy" {
+  name        = "KarpenterControllerPassRolePolicy"
+  description = "Allow Karpenter controller to pass IAM roles to EC2"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:GetInstanceProfile"
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/karpenter-node-role-${local.name}",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/karpenter-node-role-*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "karpenter_controller_passrole_attach" {
+  role       = data.aws_iam_role.karpenter_controller_role.name
+  policy_arn = aws_iam_policy.karpenter_controller_passrole_policy.arn
+}
