@@ -14,6 +14,9 @@ remove-rquota:
 create-rbac:
 	kubectl apply -f infra/terraform/helm/jupyterhub/manifests/rbac.yaml
 
+create-pvc:
+	kubectl apply -f infra/terraform/helm/jupyterhub/manifests/pvc.yaml
+
 ## TESTING ##
 
 #! EKS Testing
