@@ -8,7 +8,7 @@ head:
   nodeSelector:
     NodeGroupType: head-cpu
 
-  tolerations: []  # head node doesn't need GPU taint
+  tolerations: []
 
   resources:
     requests:
@@ -29,20 +29,14 @@ head:
 
 worker:
   image:
-    repository: rayproject/ray-ml
+    repository: rayproject/ray
     tag: "2.11.0-py311-gpu"
-
   nodeSelector:
     NodeGroupType: worker-gpu
-
   tolerations:
     - key: "nvidia.com/gpu"
       operator: "Exists"
       effect: "NoSchedule"
-    - key: "nvidia.com/gpu"
-      operator: "Exists"
-      effect: "NoExecute"
-
   resources:
     requests:
       cpu: "2"
@@ -50,18 +44,16 @@ worker:
       ephemeral-storage: "10Gi"
       nvidia.com/gpu: 1
     limits:
-      cpu: "4"
-      memory: "12Gi"
+      cpu: "2"
+      memory: "6Gi"
       ephemeral-storage: "20Gi"
       nvidia.com/gpu: 1
-
   replicas: 1
-  minReplicas: 0
-  maxReplicas: 2
-
+  minReplicas: 1
+  maxReplicas: 5
   command: ["/bin/bash", "-c"]
   args:
     - |
-      echo "Starting Ray Worker Node with GPU support..."
-      ray start --address=ray-cluster-kuberay-head-svc:6379 --num-gpus=1 --block
+      echo "Starting Ray GPU Worker..."
+      ray start --address=$RAY_HEAD_SERVICE_HOST:6379 --num-gpus=1
       tail -f /dev/null

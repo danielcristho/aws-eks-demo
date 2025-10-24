@@ -1,6 +1,4 @@
-# -----------------------------------------------------------------------------
-# NVIDIA Device Plugin (detect GPUs on Karpenter or managed nodegroups)
-# -----------------------------------------------------------------------------
+# NVIDIA Device Plugin
 resource "helm_release" "nvidia_device_plugin" {
   name             = "nvidia-device-plugin"
   repository       = "https://nvidia.github.io/k8s-device-plugin"
@@ -22,9 +20,7 @@ resource "helm_release" "nvidia_device_plugin" {
   depends_on = [module.eks]
 }
 
-# -----------------------------------------------------------------------------
 # NGINX Ingress Controller
-# -----------------------------------------------------------------------------
 resource "helm_release" "nginx_ingress_controller" {
   name             = "nginx-ingress"
   repository       = "https://kubernetes.github.io/ingress-nginx"
@@ -42,9 +38,7 @@ resource "helm_release" "nginx_ingress_controller" {
   depends_on = [module.eks]
 }
 
-# -----------------------------------------------------------------------------
-# JupyterHub Helm Release
-# -----------------------------------------------------------------------------
+# JupyterHub Release
 resource "helm_release" "jupyterhub_cluster" {
   name             = "jupyterhub-cluster"
   repository       = "https://jupyterhub.github.io/helm-chart/"
@@ -66,9 +60,7 @@ resource "helm_release" "jupyterhub_cluster" {
   ]
 }
 
-# -----------------------------------------------------------------------------
-# KubeRay Operator (manages RayCluster CRDs)
-# -----------------------------------------------------------------------------
+# KubeRay Operator
 resource "helm_release" "kuberay_operator" {
   name             = "kuberay-operator"
   repository       = "https://ray-project.github.io/kuberay-helm/"
@@ -92,9 +84,7 @@ resource "helm_release" "kuberay_operator" {
   depends_on = [module.eks]
 }
 
-# -----------------------------------------------------------------------------
-# Ray Cluster (autoscaled workloads managed by Karpenter)
-# -----------------------------------------------------------------------------
+# Ray Cluster
 resource "helm_release" "ray_cluster" {
   name             = "ray-cluster"
   repository       = "https://ray-project.github.io/kuberay-helm/"
@@ -105,7 +95,6 @@ resource "helm_release" "ray_cluster" {
 
   values = [
     templatefile("${path.module}/helm/ray/values.yaml", {
-      # Injects label awareness for Karpenter
       karpenter_node_label = "karpenter.sh/discovery=${local.name}"
     })
   ]

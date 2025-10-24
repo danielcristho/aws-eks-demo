@@ -26,9 +26,9 @@ hub:
         - admin
 
     KubeSpawner:
-      k8s_api_request_timeout: 300
-      start_timeout: 300
-      http_timeout: 300
+      k8s_api_request_timeout: 1200
+      start_timeout: 1200
+      http_timeout: 1200
       image_pull_policy: IfNotPresent
 
 proxy:
@@ -54,7 +54,7 @@ singleuser:
       default: true
       kubespawner_override:
         namespace: jhub
-        image: jupyter/scipy-notebook:python-3.10.11
+        image: jupyter/scipy-notebook:python-3.11
         cpu_guarantee: 1
         mem_guarantee: 4G
         cpu_limit: 2
@@ -73,10 +73,10 @@ singleuser:
       kubespawner_override:
         namespace: jhub
         image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
-        cpu_guarantee: 4
-        mem_guarantee: 15G
+        cpu_guarantee: 2
+        mem_guarantee: 4G
         cpu_limit: 4
-        mem_limit: 15G
+        mem_limit: 8G
         extra_resource_limits:
           nvidia.com/gpu: "1"
         tolerations:

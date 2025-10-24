@@ -234,3 +234,6 @@ override.tf.json
 # Key files (if not managed securely elsewhere)
 *.pem
 *.key
+
+# Scripts
+clean.sh

@@ -1,6 +1,6 @@
-# ----------------------------------------------
+# --------------------------------------------------
 # GPU Node Pool
-# ----------------------------------------------
+# --------------------------------------------------
 apiVersion: karpenter.sh/v1beta1
 kind: NodePool
 metadata:
@@ -42,7 +42,12 @@ metadata:
   name: gpu-nodeclass
 spec:
   amiFamily: AL2
-  role: karpenter-node-role-mlops-demo
+  instanceProfile: KarpenterNodeInstanceProfile-mlops-demo
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 200Gi
+        volumeType: gp3
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: mlops-demo
@@ -50,9 +55,9 @@ spec:
     - tags:
         karpenter.sh/discovery: mlops-demo
 
-# ----------------------------------------------
+# --------------------------------------------------
 # CPU Node Pool
-# ----------------------------------------------
+# --------------------------------------------------
 ---
 apiVersion: karpenter.sh/v1beta1
 kind: NodePool
@@ -92,7 +97,7 @@ metadata:
   name: cpu-nodeclass
 spec:
   amiFamily: AL2
-  role: karpenter-node-role-mlops-demo
+  instanceProfile: KarpenterNodeInstanceProfile-mlops-demo
   subnetSelectorTerms:
     - tags:
         karpenter.sh/discovery: mlops-demo
