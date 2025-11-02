@@ -44,7 +44,7 @@ Create an S3 bucket for Terraform state::
 make create-bucket
 ```
 
-Navigate to `infra/terraform`. Update `providers.tf` first, Make sure to configure your S3 backend properly for storing Terraform state:
+Navigate to [infra/terraform](./infra/terraform/). Update [providers.tf](./infra/terraform/providers.tf) first, Make sure to configure your S3 backend properly for storing Terraform state:
 
 ```tf
 # Store ".tfstate"  
@@ -55,7 +55,7 @@ backend "s3" {
   }
 ```
 
-Before running Terraform commands, update the following variable with your own IAM User ARN in `infra/terraform/terraform.tfvars`:
+Before running Terraform commands, update the following variable with your own IAM User ARN in [infra/terraform/terraform.tfvars](./infra/terraform/terraform.tfvars):
 
 ```tf
 console_admin_arn = "arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_USERNAME>"
