@@ -16,6 +16,12 @@ variable "cluster_version" {
   default     = "1.32"
 }
 
+variable "console_admin_arn" {
+  description = "IAM ARN for EKS console admin access"
+  type        = string
+}
+
+
 variable "vpc_cidr" {
   description = "The main CIDR block for the VPC."
   type        = string
