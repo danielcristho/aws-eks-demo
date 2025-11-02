@@ -6,7 +6,7 @@ This repository contains the Infrastructure as Code (IaC) for building a Cost-Op
 
 The core goal is to demonstrate Resource Isolation (ensuring tenants do not overuse shared GPU/CPU resources) and GPU-Aware Scheduling at a minimal operational cost.
 
-**Disclamer**
+**🔴Disclamer🔴**
 
 This demo focuses primarily on infrastructure and architectural design, not on model development or fine-tuning of AI/LLM workloads.
 
