@@ -2,17 +2,8 @@ from collections import Counter
 import sys
 import time
 import ray
-""" Run this script locally to execute a Ray program on your Ray cluster on
-Kubernetes.
 
-Before running this script, you must port-forward from the local host to
-the relevant Kubernetes head service e.g.
-kubectl -n ray port-forward service/example-cluster-ray-head 10001:10001.
-
-Set the constant LOCAL_PORT below to the local port being forwarded.
-"""
 LOCAL_PORT = 10001
-HEAD_IP="192.168.122.10"
 
 @ray.remote
 def gethostname(x):
@@ -23,7 +14,6 @@ def gethostname(x):
 
 
 def wait_for_nodes(expected):
-    # Wait for all nodes to join the cluster.
     while True:
         resources = ray.cluster_resources()
         node_keys = [key for key in resources if "node" in key]
@@ -39,8 +29,6 @@ def wait_for_nodes(expected):
 
 def main():
     wait_for_nodes(2)
-
-    # Check that objects can be transferred from each node to each other node.
     for i in range(10):
         print("Iteration {}".format(i))
         results = [
@@ -54,5 +42,5 @@ def main():
 
 
 if __name__ == "__main__":
-    ray.init(f"ray://10.21.79.111:{LOCAL_PORT}")
+    ray.init(f"ray://ray-cluster-kuberay-head-svc.ray.svc.cluster.local:{LOCAL_PORT}")
     main()
