@@ -10,7 +10,7 @@ The core goal is to demonstrate Resource Isolation (ensuring tenants do not over
 
 This demo focuses primarily on infrastructure and architectural design, not on model development or fine-tuning of AI/LLM workloads.
 
-Model training & optimization examples may be added later in future update 😀
+**Model training & optimization examples may be added later in future update** 😀
 
 ## Requirements
 
@@ -38,7 +38,7 @@ Before starting the deployment, ensure you have:
 
 ## Deployment Guide
 
-Create an S3 bucket for Terraform state::
+Create an S3 bucket for Terraform state. You can use `make` command from root dir:
 
 ```sh
 make create-bucket
@@ -61,7 +61,7 @@ Before running Terraform commands, update the following variable with your own I
 console_admin_arn = "arn:aws:iam::<YOUR_ACCOUNT_ID>:user/<YOUR_USERNAME>"
 ```
 
-then run `terraform` commmands. Make sure everything runs correctly:
+Then run `terraform` commmands. Make sure everything runs correctly:
 
 ```sh
 $ terraform init
@@ -74,4 +74,10 @@ $ terrafrom apply
 | **head-group**        | `m5.large`    | Control plane + JupyterHub + Ray Head |
 | **gpu-workers-group** | `g4dn.xlarge` | GPU-based workloads for Ray Workers   |
 
-NB: You can adjust these instance types in main.tf based on your AWS quota and cost preference.
+NB: You can adjust these instance types in `main.tf` based on your AWS quota and cost preference.
+
+To create Karpenter Nodepool, just run `make create-nodepool` from root dir:
+
+```sh
+$ make create-nodepool
+```
