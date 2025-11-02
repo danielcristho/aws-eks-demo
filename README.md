@@ -44,7 +44,7 @@ Create an S3 bucket for Terraform state::
 make create-bucket
 ```
 
-Navigate to [infra/terraform](./infra/terraform/). Update [providers.tf](./infra/terraform/providers.tf) first, Make sure to configure your S3 backend properly for storing Terraform state:
+Navigate to [infra/terraform](./infra/terraform/). Update [providers.tf](./infra/terraform/versions.tf) first, Make sure to configure your S3 backend properly for storing Terraform state:
 
 ```tf
 # Store ".tfstate"  
