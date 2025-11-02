@@ -1,4 +1,6 @@
-#! S3
+## S3 ##
+
+#! Create 'tfstate' bucket
 create-bucket:
 	python3 infra/scripts/create_s3.py
 
@@ -11,12 +13,16 @@ remove-rquota:
 	kubectl delete resourcequota ml-quota-default -n ml-workload-ns
 
 ## JupyterHub ##
+
+#! SA
 create-rbac:
 	kubectl apply -f infra/terraform/helm/manifests/rbac.yaml
 
+#! Create PVC
 create-pvc:
 	kubectl apply -f infra/terraform/helm/manifests/pvc.yaml
 
+#! Release new changes
 update-jhub:
 	helm upgrade jupyterhub-cluster jupyterhub/jupyterhub \
 		--namespace jhub \
@@ -25,6 +31,7 @@ update-jhub:
 
 ## RAY ##
 
+#! Release new changes
 update-raycluster:
 	helm upgrade --install ray-cluster ray-cluster \
 		-n ray \
@@ -34,7 +41,6 @@ update-raycluster:
 ## Karpenter ##
 
 #! Create node pools
-
 create-nodepool:
 	kubectl apply -f infra/terraform/helm/manifests/karpenter.yaml
 
